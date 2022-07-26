@@ -30,6 +30,7 @@ if (file_exists($autoloadPath)) {
 use Dotenv\Dotenv;
 use PrestaShop\Module\Mbo\Addons\Subscriber\ModuleManagementEventSubscriber;
 use PrestaShop\Module\Mbo\Api\Security\AdminAuthenticationProvider;
+use PrestaShop\Module\Mbo\Distribution\Client;
 use PrestaShop\Module\Mbo\Security\PermissionCheckerInterface;
 use PrestaShop\PrestaShop\Adapter\SymfonyContainer;
 use PrestaShop\PrestaShop\Core\Domain\Employee\Exception\EmployeeException;
@@ -41,6 +42,8 @@ class ps_mbo extends Module
 {
     use PrestaShop\Module\Mbo\Traits\HaveTabs;
     use PrestaShop\Module\Mbo\Traits\UseHooks;
+
+    const DEFAULT_ENV = '';
 
     /**
      * @var string
@@ -62,6 +65,12 @@ class ps_mbo extends Module
      * @var ContainerInterface
      */
     protected $container;
+
+
+    /**
+     * @var \PrestaShop\Module\Mbo\DependencyInjection\ServiceContainer
+     */
+    private $serviceContainer;
 
     /**
      * @var PermissionCheckerInterface
@@ -116,6 +125,8 @@ class ps_mbo extends Module
             $this->installHooks();
 
             $this->createApiUser();
+            
+            $this->registerShop();
 
             return true;
         }
@@ -133,7 +144,7 @@ class ps_mbo extends Module
         $result = true;
 
         // Values generated
-        $adminUuid = Uuid::uuid4();
+        $adminUuid = Uuid::uuid4()->toString();
         $this->configurationList['PS_MBO_SHOP_ADMIN_UUID'] = $adminUuid;
         $this->configurationList['PS_MBO_SHOP_ADMIN_MAIL'] = sprintf('mbo-%s@prestashop.com', $adminUuid);
 
@@ -269,6 +280,24 @@ class ps_mbo extends Module
         return $this->container->get($serviceName);
     }
 
+    /**
+     * @param string $serviceName
+     *
+     * @return object|null
+     */
+    public function getService($serviceName)
+    {
+        if ($this->serviceContainer === null) {
+            $this->serviceContainer = new \PrestaShop\Module\Mbo\DependencyInjection\ServiceContainer(
+                $this->name . str_replace('.', '', $this->version),
+                $this->getLocalPath(),
+                $this->getModuleEnv()
+            );
+        }
+
+        return $this->serviceContainer->getService($serviceName);
+    }
+
     public function isUsingNewTranslationSystem(): bool
     {
         return true;
@@ -383,5 +412,27 @@ class ps_mbo extends Module
     public function getAdminAuthenticationProvider(): AdminAuthenticationProvider
     {
         return $this->get('PrestaShop\Module\Mbo\Api\Security\AdminAuthenticationProvider');
+    }
+
+    private function registerShop()
+    {
+        try {
+            /** @var Client $distributionApi */
+            $distributionApi = $this->getService('mbo.cdc.client.distribution_api');
+
+            $distributionApi->registerShop();
+        } catch(Exception $exception) {
+            // What to do if the registration fails ??
+        }
+    }
+
+    private function getModuleEnvVar(): string
+    {
+        return strtoupper($this->name) . '_ENV';
+    }
+
+    private function getModuleEnv(?string $default = null): string
+    {
+        return getenv($this->getModuleEnvVar()) ?: $default ?: self::DEFAULT_ENV;
     }
 }

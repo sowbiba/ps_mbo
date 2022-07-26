@@ -24,7 +24,7 @@ namespace PrestaShop\Module\Mbo\Api\Security;
 use Configuration;
 use Doctrine\Common\Cache\CacheProvider;
 use GuzzleHttp\Exception\GuzzleException;
-use PrestaShop\Module\Mbo\Api\Client\NestApiClient;
+use PrestaShop\Module\Mbo\Distribution\Client;
 use PrestaShop\Module\Mbo\Api\Exception\IncompleteSignatureParamsException;
 use PrestaShop\Module\Mbo\Api\Exception\RetrieveNewKeyException;
 use PrestaShop\Module\Mbo\Api\Exception\UnauthorizedException;
@@ -37,9 +37,9 @@ class AuthorizationChecker
     private $cacheProvider;
 
     /**
-     * @var NestApiClient
+     * @var Client
      */
-    private $nestApiClient;
+    private $distributionClient;
 
     /**
      * @var string
@@ -51,10 +51,10 @@ class AuthorizationChecker
      */
     private $keyCacheIndex;
 
-    public function __construct(CacheProvider $cacheProvider, NestApiClient $nestApiClient)
+    public function __construct(CacheProvider $cacheProvider, Client $distributionClient)
     {
         $this->cacheProvider = $cacheProvider;
-        $this->nestApiClient = $nestApiClient;
+        $this->distributionClient = $distributionClient;
 
         $shopUuid = Configuration::get('PS_MBO_SHOP_ADMIN_UUID');
         $this->keyVersionCacheIndex = 'api_key_version_' . $shopUuid;
@@ -104,7 +104,7 @@ class AuthorizationChecker
     private function retrieveNewKey()
     {
         try {
-            $response = $this->nestApiClient->retrieveNewKey();
+            $response = $this->distributionClient->retrieveNewKey();
 
             $key = $response->key;
             $keyVersion = $response->version;
