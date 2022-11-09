@@ -27,7 +27,9 @@ use PrestaShop\PrestaShop\Core\Module\ModuleInterface;
 
 trait UseActionListModules
 {
+
     /**
+     * 
      * Hook displayModuleConfigureExtraButtons.
      * Add additional buttons on the module configure page's toolbar.
      *
